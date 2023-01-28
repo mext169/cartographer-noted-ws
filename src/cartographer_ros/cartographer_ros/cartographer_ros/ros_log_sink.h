@@ -25,6 +25,7 @@ namespace cartographer_ros {
 
 // Makes Google logging use ROS logging for output while an instance of this
 // class exists.
+// 自定义的输出日志的方式: 使用ROS_INFO进行glog消息的输出
 class ScopedRosLogSink : public ::google::LogSink {
  public:
   ScopedRosLogSink();

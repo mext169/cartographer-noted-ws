@@ -38,6 +38,17 @@ const char* GetBasename(const char* filepath) {
 ScopedRosLogSink::ScopedRosLogSink() : will_die_(false) { AddLogSink(this); }
 ScopedRosLogSink::~ScopedRosLogSink() { RemoveLogSink(this); }
 
+/**
+ * @brief 重载了send()方法, 使用ROS_INFO进行glog消息的输出
+ * 
+ * @param[in] severity 消息级别
+ * @param[in] filename 全路径文件名
+ * @param[in] base_filename 文件名
+ * @param[in] line 消息所在的文件行数
+ * @param[in] tm_time 消息的时间
+ * @param[in] message 消息数据本体
+ * @param[in] message_len 消息长度
+ */
 void ScopedRosLogSink::send(const ::google::LogSeverity severity,
                             const char* const filename,
                             const char* const base_filename, const int line,

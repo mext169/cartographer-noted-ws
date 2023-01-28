@@ -83,18 +83,32 @@ void Run() {
 }  // namespace cartographer_ros
 
 int main(int argc, char** argv) {
+  // 初始化glog库
   google::InitGoogleLogging(argv[0]);
+  // 完成命令行参数的解析
+  // 其中，第3个参数为remove_flags。如果为true，gflags会移除解析过的参数，否则这些参数会保留，但可能对参数顺序进行改变
   google::ParseCommandLineFlags(&argc, &argv, true);
 
+  // glog里提供的CHECK系列的宏, 检测某个表达式是否为真
+  // 检测expression如果不为真, 则打印后面的description和栈上的信息，然后退出程序, 出错后的处理过程和FATAL比较像
   CHECK(!FLAGS_configuration_directory.empty())
       << "-configuration_directory is missing.";
   CHECK(!FLAGS_configuration_basename.empty())
       << "-configuration_basename is missing.";
 
+  // ros节点的初始化
   ::ros::init(argc, argv, "cartographer_node");
+  // 一般不需要在自己的代码中显式调用
+  // 但是若想在创建任何NodeHandle实例之前启动ROS相关的线程, 网络等, 可以显式调用该函数.
   ::ros::start();
 
+  // 使用ROS_INFO进行glog消息的输出
+  // 实测，把这句注释了，一句日志也不会打印
   cartographer_ros::ScopedRosLogSink ros_log_sink;
+
+  // 开始运行cartographer_ros
   cartographer_ros::Run();
+  
+  // 结束ROS相关的线程, 网络等
   ::ros::shutdown();
 }
