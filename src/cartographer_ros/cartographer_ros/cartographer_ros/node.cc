@@ -59,21 +59,42 @@ using TrajectoryState =
 namespace {
 // Subscribes to the 'topic' for 'trajectory_id' using the 'node_handle' and
 // calls 'handler' on the 'node' to handle messages. Returns the subscriber.
+
+/**
+ * @brief 在node_handle中订阅topic,并与传入的回调函数进行注册
+ * 
+ * @tparam MessageType 模板参数,消息的数据类型
+ * @param[in] handler 函数指针, 接受传入的函数的地址
+ * @param[in] trajectory_id 轨迹id
+ * @param[in] topic 订阅的topic名字
+ * @param[in] node_handle ros的node_handle
+ * @param[in] node node类的指针
+ * @return ::ros::Subscriber 订阅者
+ */
 template <typename MessageType>
-::ros::Subscriber SubscribeWithHandler(
-    void (Node::*handler)(int, const std::string&,
-                          const typename MessageType::ConstPtr&),
-    const int trajectory_id, const std::string& topic,
-    ::ros::NodeHandle* const node_handle, Node* const node) {
+::ros::Subscriber SubscribeWithHandler(void (Node::*handler)(int, const std::string&, const typename MessageType::ConstPtr&),
+                                        const int trajectory_id, 
+                                        const std::string& topic, 
+                                        ::ros::NodeHandle* const node_handle, 
+                                        Node* const node) {
+  // https://blog.csdn.net/zeye5731/article/details/124465549
+  // http://wiki.ros.org/rospy/Overview/Publishers%20and%20Subscribers#Choosing_a_good_queue_size
+  // 当queue_size=0，即ROS消息队列为0时，表示为无限队列长度，内存使用量可以无限增长，因此不推荐使用。
+  // 当两个queue_size=1时，那么系统不会缓存数据，自然处理的就是最新的消息。
+  // 当queue_size设置为10或者更多时候，用户更不容易错过发布的消息，适用于与人交互的用户界面的数据展示。
   return node_handle->subscribe<MessageType>(
-      topic, kInfiniteSubscriberQueueSize,
+      topic, kInfiniteSubscriberQueueSize, // kInfiniteSubscriberQueueSize = 0
+      // 使用boost::function构造回调函数,被subscribe注册
+      // 这里为什么搞得这么复杂? --> ros的回调函数只能有一个参数，但是cartographer_ros中定义的回调函数需要3个参数
       boost::function<void(const typename MessageType::ConstPtr&)>(
+          // lambda表达式
           [node, handler, trajectory_id,
            topic](const typename MessageType::ConstPtr& msg) {
             (node->*handler)(trajectory_id, topic, msg);
           }));
 }
 
+// 返回轨迹状态
 std::string TrajectoryStateToString(const TrajectoryState trajectory_state) {
   switch (trajectory_state) {
     case TrajectoryState::ACTIVE:
@@ -90,35 +111,53 @@ std::string TrajectoryStateToString(const TrajectoryState trajectory_state) {
 
 }  // namespace
 
+/**
+ * @brief
+ * 声明ROS的一些topic的发布器, 服务的发布器, 以及将时间驱动的函数与定时器进行绑定
+ *
+ * @param[in] node_options 配置文件的内容
+ * @param[in] map_builder SLAM算法的具体实现
+ * @param[in] tf_buffer tf
+ * @param[in] collect_metrics 是否启用metrics,默认不启用
+ */
 Node::Node(
     const NodeOptions& node_options,
     std::unique_ptr<cartographer::mapping::MapBuilderInterface> map_builder,
     tf2_ros::Buffer* const tf_buffer, const bool collect_metrics)
     : node_options_(node_options),
       map_builder_bridge_(node_options_, std::move(map_builder), tf_buffer) {
+  // 将mutex_上锁, 防止在初始化时数据被更改
   absl::MutexLock lock(&mutex_);
+  // 默认不启用
   if (collect_metrics) {
     metrics_registry_ = absl::make_unique<metrics::FamilyFactory>();
     carto::metrics::RegisterAllMetrics(metrics_registry_.get());
   }
 
-  submap_list_publisher_ =
-      node_handle_.advertise<::cartographer_ros_msgs::SubmapList>(
+  // Step: 1 声明需要发布的topic
+
+  // 发布SubmapList
+  submap_list_publisher_ = node_handle_.advertise<::cartographer_ros_msgs::SubmapList>(
           kSubmapListTopic, kLatestOnlyPublisherQueueSize);
-  trajectory_node_list_publisher_ =
-      node_handle_.advertise<::visualization_msgs::MarkerArray>(
+  // 发布轨迹
+  trajectory_node_list_publisher_ = node_handle_.advertise<::visualization_msgs::MarkerArray>(
           kTrajectoryNodeListTopic, kLatestOnlyPublisherQueueSize);
+  // 发布landmark_pose
   landmark_poses_list_publisher_ =
       node_handle_.advertise<::visualization_msgs::MarkerArray>(
           kLandmarkPosesListTopic, kLatestOnlyPublisherQueueSize);
+  // 发布约束
   constraint_list_publisher_ =
       node_handle_.advertise<::visualization_msgs::MarkerArray>(
           kConstraintListTopic, kLatestOnlyPublisherQueueSize);
+  // 发布tracked_pose, 默认不发布
   if (node_options_.publish_tracked_pose) {
     tracked_pose_publisher_ =
         node_handle_.advertise<::geometry_msgs::PoseStamped>(
             kTrackedPoseTopic, kLatestOnlyPublisherQueueSize);
   }
+
+  // Step: 2 声明发布对应名字的ROS服务, 并将服务的发布器放入到vector容器中
   service_servers_.push_back(node_handle_.advertiseService(
       kSubmapQueryServiceName, &Node::HandleSubmapQuery, this));
   service_servers_.push_back(node_handle_.advertiseService(
@@ -134,29 +173,34 @@ Node::Node(
   service_servers_.push_back(node_handle_.advertiseService(
       kReadMetricsServiceName, &Node::HandleReadMetrics, this));
 
+  // Step: 3 处理之后的点云的发布器
   scan_matched_point_cloud_publisher_ =
       node_handle_.advertise<sensor_msgs::PointCloud2>(
           kScanMatchedPointCloudTopic, kLatestOnlyPublisherQueueSize);
 
+  // Step: 4 进行定时器与函数的绑定, 定时发布数据
   wall_timers_.push_back(node_handle_.createWallTimer(
-      ::ros::WallDuration(node_options_.submap_publish_period_sec),
+      ::ros::WallDuration(node_options_.submap_publish_period_sec),  // 0.3s
       &Node::PublishSubmapList, this));
   if (node_options_.pose_publish_period_sec > 0) {
     publish_local_trajectory_data_timer_ = node_handle_.createTimer(
-        ::ros::Duration(node_options_.pose_publish_period_sec),
+        ::ros::Duration(node_options_.pose_publish_period_sec),  // 5e-3s
         &Node::PublishLocalTrajectoryData, this);
   }
   wall_timers_.push_back(node_handle_.createWallTimer(
-      ::ros::WallDuration(node_options_.trajectory_publish_period_sec),
+      ::ros::WallDuration(
+          node_options_.trajectory_publish_period_sec),  // 30e-3s
       &Node::PublishTrajectoryNodeList, this));
   wall_timers_.push_back(node_handle_.createWallTimer(
-      ::ros::WallDuration(node_options_.trajectory_publish_period_sec),
+      ::ros::WallDuration(
+          node_options_.trajectory_publish_period_sec),  // 30e-3s
       &Node::PublishLandmarkPosesList, this));
   wall_timers_.push_back(node_handle_.createWallTimer(
-      ::ros::WallDuration(kConstraintPublishPeriodSec),
+      ::ros::WallDuration(kConstraintPublishPeriodSec),  // 0.5s
       &Node::PublishConstraintList, this));
 }
 
+// 在析构时执行一次全局优化
 Node::~Node() { FinishAllTrajectories(); }
 
 ::ros::NodeHandle* Node::node_handle() { return &node_handle_; }
