@@ -34,22 +34,31 @@ ConfigurationFileResolver::ConfigurationFileResolver(
 
 std::string ConfigurationFileResolver::GetFullPathOrDie(
     const std::string& basename) {
+  // LOG(INFO) << "------------configuration file path------------";
+  // for (const auto& path : configuration_files_directories_) {
+  //   LOG(INFO) << path;
+  // }
+  // LOG(INFO) << "-----------------------------------------------";
   for (const auto& path : configuration_files_directories_) {
     const std::string filename = path + "/" + basename;
     std::ifstream stream(filename.c_str());
+    // 只要找到就退出
     if (stream.good()) {
       LOG(INFO) << "Found '" << filename << "' for '" << basename << "'.";
       return filename;
     }
   }
+  // 没找到配置文件 程序异常结束
   LOG(FATAL) << "File '" << basename << "' was not found.";
 }
 
 std::string ConfigurationFileResolver::GetFileContentOrDie(
     const std::string& basename) {
   CHECK(!basename.empty()) << "File basename cannot be empty." << basename;
+  // 根据文件名查找是否存在于给定文件夹中
   const std::string filename = GetFullPathOrDie(basename);
   std::ifstream stream(filename.c_str());
+  // 读取配置文件并返回
   return std::string((std::istreambuf_iterator<char>(stream)),
                      std::istreambuf_iterator<char>());
 }

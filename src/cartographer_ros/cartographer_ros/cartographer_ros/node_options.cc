@@ -63,9 +63,13 @@ std::tuple<NodeOptions, TrajectoryOptions> LoadOptions(
           std::vector<std::string>{configuration_directory});
   const std::string code =
       file_resolver->GetFileContentOrDie(configuration_basename);
+  // LOG(INFO) << code;
+  // 根据给定的字符串, 生成一个lua字典
   cartographer::common::LuaParameterDictionary lua_parameter_dictionary(
       code, std::move(file_resolver));
-
+  // 创建元组tuple,元组定义了一个有固定数目元素的容器, 其中的每个元素类型都可以不相同
+  // 将配置文件的内容填充进NodeOptions与TrajectoryOptions, 并返回
+  // TODO 需要加自定义参数的话 怎么办 
   return std::make_tuple(CreateNodeOptions(&lua_parameter_dictionary),
                          CreateTrajectoryOptions(&lua_parameter_dictionary));
 }
