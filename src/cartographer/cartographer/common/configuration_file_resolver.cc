@@ -26,19 +26,25 @@
 namespace cartographer {
 namespace common {
 
+/**
+ * @brief Construct a new Configuration File Resolver:: Configuration File Resolver object
+ * 
+ * @param[in] configuration_files_directories 配置文件目录
+ */
 ConfigurationFileResolver::ConfigurationFileResolver(
     const std::vector<std::string>& configuration_files_directories)
     : configuration_files_directories_(configuration_files_directories) {
   configuration_files_directories_.push_back(kConfigurationFilesDirectory);
 }
 
+/**
+ * @brief 在所有的配置文件目录中 根据给定配置文件的名字 搜索 配置文件
+ * 
+ * @param[in] basename 给定配置文件的名字
+ * @return std::string 如果搜索成功, 返回配置文件的全路径名
+ */
 std::string ConfigurationFileResolver::GetFullPathOrDie(
     const std::string& basename) {
-  // LOG(INFO) << "------------configuration file path------------";
-  // for (const auto& path : configuration_files_directories_) {
-  //   LOG(INFO) << path;
-  // }
-  // LOG(INFO) << "-----------------------------------------------";
   for (const auto& path : configuration_files_directories_) {
     const std::string filename = path + "/" + basename;
     std::ifstream stream(filename.c_str());
@@ -48,17 +54,25 @@ std::string ConfigurationFileResolver::GetFullPathOrDie(
       return filename;
     }
   }
-  // 没找到配置文件 程序异常结束
+  // 如果找不到配置文件就退出整个程序
   LOG(FATAL) << "File '" << basename << "' was not found.";
 }
 
+/**
+ * @brief 读取配置文件内容
+ * 
+ * @param[in] basename 文件名
+ * @return std::string 文件内容的数据流
+ */
 std::string ConfigurationFileResolver::GetFileContentOrDie(
     const std::string& basename) {
   CHECK(!basename.empty()) << "File basename cannot be empty." << basename;
-  // 根据文件名查找是否存在于给定文件夹中
+
+  // 根据文件名查找是否在给定文件夹中存在
   const std::string filename = GetFullPathOrDie(basename);
   std::ifstream stream(filename.c_str());
-  // 读取配置文件并返回
+
+  // 读取配置文件内容并返回
   return std::string((std::istreambuf_iterator<char>(stream)),
                      std::istreambuf_iterator<char>());
 }

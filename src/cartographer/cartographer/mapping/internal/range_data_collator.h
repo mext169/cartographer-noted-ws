@@ -32,8 +32,7 @@ namespace mapping {
 // subdivisions.
 class RangeDataCollator {
  public:
-  explicit RangeDataCollator(
-      const std::vector<std::string>& expected_range_sensor_ids)
+  explicit RangeDataCollator(const std::vector<std::string>& expected_range_sensor_ids)
       : expected_sensor_ids_(expected_range_sensor_ids.begin(),
                              expected_range_sensor_ids.end()) {}
 
@@ -48,9 +47,9 @@ class RangeDataCollator {
 
   const std::set<std::string> expected_sensor_ids_;
   // Store at most one message for each sensor.
-  std::map<std::string, sensor::TimedPointCloudData> id_to_pending_data_;
-  common::Time current_start_ = common::Time::min();
-  common::Time current_end_ = common::Time::min();
+  std::map<std::string, sensor::TimedPointCloudData> id_to_pending_data_; // 待处理的数据
+  common::Time current_start_ = common::Time::min(); // 为本次时间同步的开始时间
+  common::Time current_end_ = common::Time::min(); // 为上一次时间同步的结束时间
 
   constexpr static float kDefaultIntensityValue = 0.f;
 };

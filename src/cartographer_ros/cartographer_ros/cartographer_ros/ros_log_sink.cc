@@ -28,13 +28,25 @@ namespace cartographer_ros {
 
 namespace {
 
+/**
+ * @brief 根据给定的文件全路径名, 获取文件名
+ * 
+ * @param[in] filepath 
+ * @return const char* 返回文件名
+ */
 const char* GetBasename(const char* filepath) {
+  // 找到 '/' 最后一次在filepath中出现的位置
   const char* base = std::strrchr(filepath, '/');
+  // 找到'/',就将'/'之后的字符串返回；找不到'/', 就将整个filepath返回
   return base ? (base + 1) : filepath;
 }
 
 }  // namespace
 
+
+/**
+ * @brief 在构造函数中调用AddLogSink(), 将ScopedRosLogSink类注册到glog中
+ */
 ScopedRosLogSink::ScopedRosLogSink() : will_die_(false) { AddLogSink(this); }
 ScopedRosLogSink::~ScopedRosLogSink() { RemoveLogSink(this); }
 
@@ -51,7 +63,8 @@ ScopedRosLogSink::~ScopedRosLogSink() { RemoveLogSink(this); }
  */
 void ScopedRosLogSink::send(const ::google::LogSeverity severity,
                             const char* const filename,
-                            const char* const base_filename, const int line,
+                            const char* const base_filename, 
+                            const int line,
                             const struct std::tm* const tm_time,
                             const char* const message,
                             const size_t message_len) {
@@ -77,6 +90,7 @@ void ScopedRosLogSink::send(const ::google::LogSeverity severity,
   }
 }
 
+// WaitTillSent()会在每次send后调用, 用于一些异步写的场景
 void ScopedRosLogSink::WaitTillSent() {
   if (will_die_) {
     // Give ROS some time to actually publish our message.

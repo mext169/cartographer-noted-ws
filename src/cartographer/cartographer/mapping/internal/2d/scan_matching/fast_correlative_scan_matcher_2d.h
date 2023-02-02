@@ -53,6 +53,7 @@ class PrecomputationGrid2D {
 
   // Returns a value between 0 and 255 to represent probabilities between
   // min_score and max_score.
+  // 获取栅格值
   int GetValue(const Eigen::Array2i& xy_index) const {
     const Eigen::Array2i local_xy_index = xy_index - offset_;
     // The static_cast<unsigned> is for performance to check with 2 comparisons
@@ -60,10 +61,8 @@ class PrecomputationGrid2D {
     // local_xy_index.x() >= wide_limits_.num_x_cells ||
     // local_xy_index.y() >= wide_limits_.num_y_cells
     // instead of using 4 comparisons.
-    if (static_cast<unsigned>(local_xy_index.x()) >=
-            static_cast<unsigned>(wide_limits_.num_x_cells) ||
-        static_cast<unsigned>(local_xy_index.y()) >=
-            static_cast<unsigned>(wide_limits_.num_y_cells)) {
+    if (static_cast<unsigned>(local_xy_index.x()) >= static_cast<unsigned>(wide_limits_.num_x_cells) ||
+        static_cast<unsigned>(local_xy_index.y()) >= static_cast<unsigned>(wide_limits_.num_y_cells)) {
       return 0;
     }
     const int stride = wide_limits_.num_x_cells;
@@ -89,15 +88,14 @@ class PrecomputationGrid2D {
   const float max_score_;
 
   // Probabilites mapped to 0 to 255.
-  std::vector<uint8> cells_;
+  std::vector<uint8> cells_; // 不同分辨率的栅格地图
 };
 
 class PrecomputationGridStack2D {
  public:
-  PrecomputationGridStack2D(
-      const Grid2D& grid,
-      const proto::FastCorrelativeScanMatcherOptions2D& options);
+  PrecomputationGridStack2D(const Grid2D& grid, const proto::FastCorrelativeScanMatcherOptions2D& options);
 
+  // 获取指定层的地图
   const PrecomputationGrid2D& Get(int index) {
     return precomputation_grids_[index];
   }
@@ -111,14 +109,11 @@ class PrecomputationGridStack2D {
 // An implementation of "Real-Time Correlative Scan Matching" by Olson.
 class FastCorrelativeScanMatcher2D {
  public:
-  FastCorrelativeScanMatcher2D(
-      const Grid2D& grid,
-      const proto::FastCorrelativeScanMatcherOptions2D& options);
+  FastCorrelativeScanMatcher2D(const Grid2D& grid, const proto::FastCorrelativeScanMatcherOptions2D& options);
   ~FastCorrelativeScanMatcher2D();
 
   FastCorrelativeScanMatcher2D(const FastCorrelativeScanMatcher2D&) = delete;
-  FastCorrelativeScanMatcher2D& operator=(const FastCorrelativeScanMatcher2D&) =
-      delete;
+  FastCorrelativeScanMatcher2D& operator=(const FastCorrelativeScanMatcher2D&) = delete;
 
   // Aligns 'point_cloud' within the 'grid' given an
   // 'initial_pose_estimate'. If a score above 'min_score' (excluding equality)

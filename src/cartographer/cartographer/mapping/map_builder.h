@@ -30,6 +30,7 @@ namespace mapping {
 
 // Wires up the complete SLAM stack with TrajectoryBuilders (for local submaps)
 // and a PoseGraph for loop closure.
+// 包含前端(TrajectoryBuilders,scan to submap) 与 后端(用于查找回环的PoseGraph) 的完整的SLAM
 class MapBuilder : public MapBuilderInterface {
  public:
   explicit MapBuilder(const proto::MapBuilderOptions &options);
@@ -72,6 +73,7 @@ class MapBuilder : public MapBuilderInterface {
     return trajectory_builders_.size();
   }
 
+  // 返回指向CollatedTrajectoryBuilder的指针
   mapping::TrajectoryBuilderInterface *GetTrajectoryBuilder(
       int trajectory_id) const override {
     return trajectory_builders_.at(trajectory_id).get();
@@ -83,18 +85,19 @@ class MapBuilder : public MapBuilderInterface {
   }
 
  private:
-  const proto::MapBuilderOptions options_;
-  common::ThreadPool thread_pool_;
+  const proto::MapBuilderOptions options_; // MapBuilder的配置项
+  common::ThreadPool thread_pool_; // 线程池。TODO 个人猜测，应该是每一条trajectory都单独开辟一个线程
 
-  std::unique_ptr<PoseGraph> pose_graph_;
+  std::unique_ptr<PoseGraph> pose_graph_; // 一个PoseGraph的智能指针
 
-  std::unique_ptr<sensor::CollatorInterface> sensor_collator_;
-  std::vector<std::unique_ptr<mapping::TrajectoryBuilderInterface>>
-      trajectory_builders_;
-  std::vector<proto::TrajectoryBuilderOptionsWithSensorIds>
-      all_trajectory_builder_options_;
+  std::unique_ptr<sensor::CollatorInterface> sensor_collator_; // 收集传感器数据的智能指针
+  // 一个向量，管理所有的TrajectoryBuilderInterface;应该是每一个trajectory对应了该向量的一个元素
+  std::vector<std::unique_ptr<mapping::TrajectoryBuilderInterface>> trajectory_builders_;
+  // 与每个TrajectoryBuilderInterface相对应的配置项
+  std::vector<proto::TrajectoryBuilderOptionsWithSensorIds> all_trajectory_builder_options_;
 };
 
+// 工厂函数
 std::unique_ptr<MapBuilderInterface> CreateMapBuilder(
     const proto::MapBuilderOptions& options);
 

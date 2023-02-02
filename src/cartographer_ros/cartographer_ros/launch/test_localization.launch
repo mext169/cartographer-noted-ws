@@ -1,8 +1,8 @@
 <launch>
   <!-- bag的地址与名称 -->
-  <arg name="bag_filename" default="/home/lx/bagfiles/rslidar-outdoor-gps-notf.bag"/>
+  <arg name="bag_filename" default="/home/mext/data/cartographer/rslidar-outdoor-gps-no-tf.bag"/>
   <!-- pbstream的地址与名称 -->
-  <arg name="load_state_filename" default="/home/lx/carto_ws/map/2d-1.pbstream"/>
+  <arg name="load_state_filename" default="/home/mext/data/cartographer/map.pbstream"/>
 
   <!-- 使用bag的时间戳 -->
   <param name="/use_sim_time" value="true" />

@@ -43,8 +43,7 @@ proto::MapBuilderOptions CreateMapBuilderOptions(
 // Implementations wire up the complete SLAM stack.
 class MapBuilderInterface {
  public:
-  using LocalSlamResultCallback =
-      TrajectoryBuilderInterface::LocalSlamResultCallback;
+  using LocalSlamResultCallback = TrajectoryBuilderInterface::LocalSlamResultCallback;
 
   using SensorId = TrajectoryBuilderInterface::SensorId;
 
@@ -62,8 +61,7 @@ class MapBuilderInterface {
 
   // Creates a new trajectory and returns its index. Querying the trajectory
   // builder for it will return 'nullptr'.
-  virtual int AddTrajectoryForDeserialization(
-      const proto::TrajectoryBuilderOptionsWithSensorIds&
+  virtual int AddTrajectoryForDeserialization(const proto::TrajectoryBuilderOptionsWithSensorIds&
           options_with_sensor_ids_proto) = 0;
 
   // Returns the 'TrajectoryBuilderInterface' corresponding to the specified

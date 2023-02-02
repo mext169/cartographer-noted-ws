@@ -30,6 +30,7 @@
 namespace cartographer {
 namespace mapping {
 
+// 包含节点的在global map下的坐标, 在local map 下的坐标与时间
 struct TrajectoryNodePose {
   struct ConstantPoseData {
     common::Time time;
@@ -41,16 +42,19 @@ struct TrajectoryNodePose {
   absl::optional<ConstantPoseData> constant_pose_data;
 };
 
+// tag: TrajectoryNode
+// 节点在global坐标系下的位姿, 与前端的结果
 struct TrajectoryNode {
+  // 前端匹配所用的数据与计算出的local坐标系下的位姿
   struct Data {
     common::Time time;
 
-    // Transform to approximately gravity align the tracking frame as
-    // determined by local SLAM.
+    // Transform to approximately gravity align the tracking frame as determined by local SLAM.
+    // 一个表示旋转矩阵的四元数。该旋转矩阵将非水平面的传感器数据投射到水平面上
     Eigen::Quaterniond gravity_alignment;
 
-    // Used for loop closure in 2D: voxel filtered returns in the
-    // 'gravity_alignment' frame.
+    // Used for loop closure in 2D: voxel filtered returns in the 'gravity_alignment' frame.
+    // 经过水平投射后的点云数据，可用于2D情况下做Loop Closure.
     sensor::PointCloud filtered_gravity_aligned_point_cloud;
 
     // Used for loop closure in 3D.
@@ -66,10 +70,12 @@ struct TrajectoryNode {
 
   // This must be a shared_ptr. If the data is used for visualization while the
   // node is being trimmed, it must survive until all use finishes.
-  std::shared_ptr<const Data> constant_data;
+  // 共享指针 https://www.cnblogs.com/diysoul/p/5930361.html
+  // TODO 为什么这里是共享指针
+  std::shared_ptr<const Data> constant_data; // 不会被后端优化修改的数据, 所以是constant
 
   // The node pose in the global SLAM frame.
-  transform::Rigid3d global_pose;
+  transform::Rigid3d global_pose; // 后端优化后, global_pose会发生改变
 };
 
 proto::TrajectoryNodeData ToProto(const TrajectoryNode::Data& constant_data);

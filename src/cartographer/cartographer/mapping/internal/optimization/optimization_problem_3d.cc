@@ -374,8 +374,6 @@ void OptimizationProblem3D::Solve(
 
       auto imu_it = imu_data.begin();
       auto prev_node_it = node_it;
-
-      bool gravity_block_added = false;
       for (++node_it; node_it != trajectory_end; ++node_it) {
         const NodeId first_node_id = prev_node_it->id;
         const NodeSpec3D& first_node_data = prev_node_it->data;
@@ -434,7 +432,6 @@ void OptimizationProblem3D::Solve(
               C_nodes.at(third_node_id).translation(),
               &trajectory_data.gravity_constant,
               trajectory_data.imu_calibration.data());
-          gravity_block_added = true;
         }
         problem.AddResidualBlock(
             RotationCostFunction3D::CreateAutoDiffCostFunction(
@@ -445,11 +442,8 @@ void OptimizationProblem3D::Solve(
             trajectory_data.imu_calibration.data());
       }
 
-      if (gravity_block_added) {
-        // Force gravity constant to be positive.
-        problem.SetParameterLowerBound(&trajectory_data.gravity_constant, 0,
-                                       0.0);
-      }
+      // Force gravity constant to be positive.
+      problem.SetParameterLowerBound(&trajectory_data.gravity_constant, 0, 0.0);
     }
   }
 

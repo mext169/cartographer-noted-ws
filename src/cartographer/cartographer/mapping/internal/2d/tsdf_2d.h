@@ -36,25 +36,22 @@ class TSDF2D : public Grid2D {
   explicit TSDF2D(const proto::Grid2D& proto,
                   ValueConversionTables* conversion_tables);
 
-  void SetCell(const Eigen::Array2i& cell_index, const float tsd,
-               const float weight);
+  void SetCell(const Eigen::Array2i& cell_index, const float tsd, const float weight);
   GridType GetGridType() const override;
   float GetTSD(const Eigen::Array2i& cell_index) const;
   float GetWeight(const Eigen::Array2i& cell_index) const;
-  std::pair<float, float> GetTSDAndWeight(
-      const Eigen::Array2i& cell_index) const;
+  std::pair<float, float> GetTSDAndWeight(const Eigen::Array2i& cell_index) const;
 
   void GrowLimits(const Eigen::Vector2f& point) override;
   proto::Grid2D ToProto() const override;
   std::unique_ptr<Grid2D> ComputeCroppedGrid() const override;
-  bool DrawToSubmapTexture(
-      proto::SubmapQuery::Response::SubmapTexture* const texture,
-      transform::Rigid3d local_pose) const override;
+  bool DrawToSubmapTexture(proto::SubmapQuery::Response::SubmapTexture* const texture, 
+                           transform::Rigid3d local_pose) const override;
   bool CellIsUpdated(const Eigen::Array2i& cell_index) const;
 
  private:
-  ValueConversionTables* conversion_tables_;
-  std::unique_ptr<TSDValueConverter> value_converter_;
+  ValueConversionTables* conversion_tables_; // 转换表指针
+  std::unique_ptr<TSDValueConverter> value_converter_; // 数据格式转换
   std::vector<uint16> weight_cells_;  // Highest bit is update marker.
 };
 

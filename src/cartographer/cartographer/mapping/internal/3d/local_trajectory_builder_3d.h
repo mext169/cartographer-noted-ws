@@ -102,15 +102,13 @@ class LocalTrajectoryBuilder3D {
   mapping::ActiveSubmaps3D active_submaps_;
 
   mapping::MotionFilter motion_filter_;
-  std::unique_ptr<scan_matching::RealTimeCorrelativeScanMatcher3D>
-      real_time_correlative_scan_matcher_;
+  std::unique_ptr<scan_matching::RealTimeCorrelativeScanMatcher3D> real_time_correlative_scan_matcher_;
   std::unique_ptr<scan_matching::CeresScanMatcher3D> ceres_scan_matcher_;
 
   std::unique_ptr<mapping::PoseExtrapolatorInterface> extrapolator_;
 
   int num_accumulated_ = 0;
-  std::vector<sensor::TimedPointCloudOriginData>
-      accumulated_point_cloud_origin_data_;
+  std::vector<sensor::TimedPointCloudOriginData> accumulated_point_cloud_origin_data_;
   absl::optional<std::chrono::steady_clock::time_point> last_wall_time_;
 
   absl::optional<double> last_thread_cpu_time_seconds_;

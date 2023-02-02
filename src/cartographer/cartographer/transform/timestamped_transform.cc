@@ -21,17 +21,19 @@
 namespace cartographer {
 namespace transform {
 
+// 线性插值
+// tag: 画图说明一下
 TimestampedTransform Interpolate(const TimestampedTransform& start,
                                  const TimestampedTransform& end,
                                  const common::Time time) {
+  // 要插值的时间要在两段时间之间
   CHECK_LE(start.time, time);
   CHECK_GE(end.time, time);
 
   const double duration = common::ToSeconds(end.time - start.time);
   const double factor = common::ToSeconds(time - start.time) / duration;
-  const Eigen::Vector3d origin =
-      start.transform.translation() +
-      (end.transform.translation() - start.transform.translation()) * factor;
+  const Eigen::Vector3d origin = start.transform.translation() +
+          (end.transform.translation() - start.transform.translation()) * factor;
   const Eigen::Quaterniond rotation =
       Eigen::Quaterniond(start.transform.rotation())
           .slerp(factor, Eigen::Quaterniond(end.transform.rotation()));

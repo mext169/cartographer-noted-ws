@@ -83,5 +83,23 @@ cmake .. -DCATKIN_DEVEL_PREFIX=../devel
 make
 ```
 
+# 5 clion打开
 
+- `File | Settings... | Build, Execution, Deployment | Cmake`
+
+
+- `Build type行选择 RelWithDebinfo 模式(为以后调试我们的carto代码做准备,如果不调试,平时你也可选择release)`
+
+
+- `设置devel文件夹路径。在CMake options行输入：`
+
+    ```
+    -DCATKIN_DEVEL_PREFIX:PATH=/home/mext/code/clion_carto_ws/devel
+    ```
+
+- `设置build文件夹路径。在Generation path行输入：`
+
+  ```
+  /home/mext/code/clion_carto_ws/build
+  ```
 

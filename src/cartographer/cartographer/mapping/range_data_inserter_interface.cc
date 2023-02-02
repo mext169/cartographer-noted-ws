@@ -22,6 +22,7 @@
 namespace cartographer {
 namespace mapping {
 
+// 加载一下配置项
 proto::RangeDataInserterOptions CreateRangeDataInserterOptions(
     common::LuaParameterDictionary* const parameter_dictionary) {
   proto::RangeDataInserterOptions options;

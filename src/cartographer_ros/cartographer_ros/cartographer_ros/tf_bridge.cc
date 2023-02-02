@@ -28,6 +28,9 @@ TfBridge::TfBridge(const std::string& tracking_frame,
       lookup_transform_timeout_sec_(lookup_transform_timeout_sec),
       buffer_(buffer) {}
 
+// note: LookupToTracking 查找从tracking_frame_到frame_id的坐标变换
+// imu_link(tracking_frame_) 在 base_link(frame_id) 上方 0.1m处
+// 那这里返回的坐标变换的z是 -0.1
 std::unique_ptr<::cartographer::transform::Rigid3d> TfBridge::LookupToTracking(
     const ::cartographer::common::Time time,
     const std::string& frame_id) const {
@@ -35,10 +38,7 @@ std::unique_ptr<::cartographer::transform::Rigid3d> TfBridge::LookupToTracking(
   std::unique_ptr<::cartographer::transform::Rigid3d> frame_id_to_tracking;
   try {
     const ::ros::Time latest_tf_time =
-        buffer_
-            ->lookupTransform(tracking_frame_, frame_id, ::ros::Time(0.),
-                              timeout)
-            .header.stamp;
+        buffer_->lookupTransform(tracking_frame_, frame_id, ::ros::Time(0.), timeout).header.stamp;
     const ::ros::Time requested_time = ToRos(time);
     if (latest_tf_time >= requested_time) {
       // We already have newer data, so we do not wait. Otherwise, we would wait

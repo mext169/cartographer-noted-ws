@@ -31,6 +31,7 @@
 namespace cartographer {
 namespace mapping {
 
+// 地图x方向与y方向的格子数
 struct CellLimits {
   CellLimits() = default;
   CellLimits(int init_num_x_cells, int init_num_y_cells)
@@ -40,8 +41,8 @@ struct CellLimits {
       : num_x_cells(cell_limits.num_x_cells()),
         num_y_cells(cell_limits.num_y_cells()) {}
 
-  int num_x_cells = 0;
-  int num_y_cells = 0;
+  int num_x_cells = 0; // x方向划分的栅格数，也是pixel坐标情况下的最大范围
+  int num_y_cells = 0; // y方向划分的栅格数
 };
 
 inline proto::CellLimits ToProto(const CellLimits& cell_limits) {

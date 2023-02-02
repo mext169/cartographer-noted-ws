@@ -57,6 +57,7 @@ transform::Rigid2d ComputeSubmapPose(const Submap2D& submap);
 // and another MaybeAdd(Global)Constraint()/WhenDone() cycle can follow.
 //
 // This class is thread-safe.
+// 计算某一个节点与某一个submap之间的约束关系
 class ConstraintBuilder2D {
  public:
   using Constraint = PoseGraphInterface::Constraint;
@@ -107,10 +108,10 @@ class ConstraintBuilder2D {
   static void RegisterMetrics(metrics::FamilyFactory* family_factory);
 
  private:
+  // FastCorrelativeScanMatcher2D的对象
   struct SubmapScanMatcher {
     const Grid2D* grid = nullptr;
-    std::unique_ptr<scan_matching::FastCorrelativeScanMatcher2D>
-        fast_correlative_scan_matcher;
+    std::unique_ptr<scan_matching::FastCorrelativeScanMatcher2D> fast_correlative_scan_matcher;
     std::weak_ptr<common::Task> creation_task_handle;
   };
 
@@ -156,11 +157,11 @@ class ConstraintBuilder2D {
   // Constraints currently being computed in the background. A deque is used to
   // keep pointers valid when adding more entries. Constraint search results
   // with below-threshold scores are also 'nullptr'.
+  // 正在计算的约束的队列
   std::deque<std::unique_ptr<Constraint>> constraints_ GUARDED_BY(mutex_);
 
   // Map of dispatched or constructed scan matchers by 'submap_id'.
-  std::map<SubmapId, SubmapScanMatcher> submap_scan_matchers_
-      GUARDED_BY(mutex_);
+  std::map<SubmapId, SubmapScanMatcher> submap_scan_matchers_ GUARDED_BY(mutex_);
   std::map<SubmapId, common::FixedRatioSampler> per_submap_sampler_;
 
   scan_matching::CeresScanMatcher2D ceres_scan_matcher_;

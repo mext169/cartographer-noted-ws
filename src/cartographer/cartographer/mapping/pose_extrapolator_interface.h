@@ -30,11 +30,15 @@
 namespace cartographer {
 namespace mapping {
 
-proto::PoseExtrapolatorOptions CreatePoseExtrapolatorOptions(
-    common::LuaParameterDictionary* const parameter_dictionary);
+proto::PoseExtrapolatorOptions CreatePoseExtrapolatorOptions(common::LuaParameterDictionary* const parameter_dictionary);
 
 class PoseExtrapolatorInterface {
  public:
+  /**
+   * @brief 
+   * 包含 请求时间内索引为0到N-1的位姿, 请求时间内索引N处的位姿
+   * 当前线速度与当前重力方向
+   */
   struct ExtrapolationResult {
     // The poses for the requested times at index 0 to N-1.
     std::vector<transform::Rigid3f> previous_poses;
@@ -45,8 +49,7 @@ class PoseExtrapolatorInterface {
   };
 
   PoseExtrapolatorInterface(const PoseExtrapolatorInterface&) = delete;
-  PoseExtrapolatorInterface& operator=(const PoseExtrapolatorInterface&) =
-      delete;
+  PoseExtrapolatorInterface& operator=(const PoseExtrapolatorInterface&) = delete;
   virtual ~PoseExtrapolatorInterface() {}
 
   // TODO: Remove dependency cycle.
@@ -65,8 +68,7 @@ class PoseExtrapolatorInterface {
   virtual void AddOdometryData(const sensor::OdometryData& odometry_data) = 0;
   virtual transform::Rigid3d ExtrapolatePose(common::Time time) = 0;
 
-  virtual ExtrapolationResult ExtrapolatePosesWithGravity(
-      const std::vector<common::Time>& times) = 0;
+  virtual ExtrapolationResult ExtrapolatePosesWithGravity(const std::vector<common::Time>& times) = 0;
 
   // Returns the current gravity alignment estimate as a rotation from
   // the tracking frame into a gravity aligned frame.

@@ -22,6 +22,7 @@ cache:
     - /home/travis/docker/
 
 env:
+  - ROS_RELEASE=kinetic DOCKER_CACHE_FILE=/home/travis/docker/kinetic-cache.tar.gz
   - ROS_RELEASE=melodic DOCKER_CACHE_FILE=/home/travis/docker/melodic-cache.tar.gz
   - ROS_RELEASE=noetic DOCKER_CACHE_FILE=/home/travis/docker/noetic-cache.tar.gz
 
@@ -33,5 +34,5 @@ before_install:
 
 install: true
 script:
-  - scripts/build_docker.sh $GITHUB_TOKEN
+  - docker build ${TRAVIS_BUILD_DIR} -t cartographer_ros:${ROS_RELEASE} -f Dockerfile.${ROS_RELEASE} --build-arg github_token=${GITHUB_TOKEN}
   - scripts/save_docker_cache.sh

@@ -45,24 +45,49 @@ class LocalSlamResultData;
 // global SLAM stack, i.e. local SLAM for initial pose estimates, scan matching
 // to detect loop closure, and a sparse pose graph optimization to compute
 // optimized pose estimates.
+// 此接口同时用于2D和3D SLAM
+// 将local slam 与 global slam 连接起来,实现了一个完整的slam
+// 即用于初始姿势估计的 local SLAM, 
+// 用于检测环路闭合的扫描匹配 以及 用于计算优化姿势估计的稀疏姿势图优化
+
+/**
+ * @brief TrajectoryBuilderInterface是个接口类,没有具体实现
+ * GlobalTrajectoryBuilder类 与 CollatedTrajectoryBuilder类 都继承了 TrajectoryBuilderInterface
+ * 并且都做了 AddSensorData() 的实现
+ */
 class TrajectoryBuilderInterface {
  public:
+
+  // InsertionResult就是用来保存插入Local Slam的一个节点的数据结构
   struct InsertionResult {
+    // NodeId是一个结构体，在mapping/id.h中定义；包含两个部分：一个int型的trajectory_id和一个int型的node_index
+    // 使用唯一的轨迹ID和该轨迹内节点的从零开始的索引的组合来唯一地标识轨迹节点
     NodeId node_id;
+    //TrajectoryNode是一个结构体，在/mapping/trajectory_node.h中定义，
+    //TrajectoryNode::Data包含了经过处理的一帧传感器数据
     std::shared_ptr<const TrajectoryNode::Data> constant_data;
+    // 已经建立起来的子图列表
+    // TODO 为什么这里需要存放多个子图呢
     std::vector<std::shared_ptr<const Submap>> insertion_submaps;
   };
+
+  // c++11: std::function 通用多态函数封装器
+  // std::function 的实例能存储、复制及调用任何可调用 (Callable) 目标: 
+  // 如函数、 lambda表达式、 bind表达式或其他函数对象, 还有指向成员函数指针和指向数据成员指针.
+  // 它也是对 C++ 中现有的可调用实体的一种类型安全的包裹（相对来说, 函数指针的调用不是类型安全的）
+
+  // c++11: using in c++11: c++11 的using可以用于模板部分具体化
 
   // A callback which is called after local SLAM processes an accumulated
   // 'sensor::RangeData'. If the data was inserted into a submap, reports the
   // assigned 'NodeId', otherwise 'nullptr' if the data was filtered out.
-  using LocalSlamResultCallback =
-      std::function<void(int /* trajectory ID */, common::Time,
+  using LocalSlamResultCallback = std::function<void(int /* trajectory ID */, common::Time,
                          transform::Rigid3d /* local pose estimate */,
                          sensor::RangeData /* in local frame */,
                          std::unique_ptr<const InsertionResult>)>;
 
   struct SensorId {
+    // c++11: 限域枚举 enum class 
     enum class SensorType {
       RANGE = 0,
       IMU,
@@ -72,8 +97,8 @@ class TrajectoryBuilderInterface {
       LOCAL_SLAM_RESULT
     };
 
-    SensorType type;
-    std::string id;
+    SensorType type;  // 传感器类型
+    std::string id;   // topic的名字
 
     bool operator==(const SensorId& other) const {
       return std::forward_as_tuple(type, id) ==
@@ -105,7 +130,7 @@ class TrajectoryBuilderInterface {
       const sensor::FixedFramePoseData& fixed_frame_pose) = 0;
   virtual void AddSensorData(const std::string& sensor_id,
                              const sensor::LandmarkData& landmark_data) = 0;
-  // Allows to directly add local SLAM results to the 'PoseGraph'. Note that it
+  // Allows to directly add local SLAM results to the 'PoseGraph'. c++11 that it
   // is invalid to add local SLAM results for a trajectory that has a
   // 'LocalTrajectoryBuilder2D/3D'.
   virtual void AddLocalSlamResultData(
