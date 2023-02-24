@@ -87,8 +87,8 @@ sensor::TimedPointCloudOriginData RangeDataCollator::CropAndMerge() {
   // 遍历所有的传感器话题
   for (auto it = id_to_pending_data_.begin(); it != id_to_pending_data_.end();) {
     // 获取数据的引用
-    sensor::TimedPointCloudData& data = it->second;
-    const sensor::TimedPointCloud& ranges = it->second.ranges;
+    sensor::TimedPointCloudData& data = it->second; // .time为点云中最后一个点的时间
+    const sensor::TimedPointCloud& ranges = it->second.ranges; // 里面存了一堆点 .time为每一个点相对于最后用个点的时间，为负的
     const std::vector<float>& intensities = it->second.intensities;
 
     // 找到点云中 第一个时间戳不小于current_start_的点的索引

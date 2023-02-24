@@ -38,9 +38,10 @@
 
 namespace cartographer {
 namespace mapping {
-  
+
 // c++11: 匿名命名空间, 作用域被限制在本文件内
-namespace { 
+// 其他文件是调用不了此命名空间内的函数的
+namespace {
 
 using mapping::proto::SerializedData;
 
@@ -76,13 +77,14 @@ void MaybeAddPureLocalizationTrimmer(const int trajectory_id, const proto::Traje
 
 /**
  * @brief 保存配置参数, 根据给定的参数初始化线程池, 并且初始化pose_graph_与sensor_collator_
- * 
+ *
  * @param[in] options proto::MapBuilderOptions格式的 map_builder参数
  */
 MapBuilder::MapBuilder(const proto::MapBuilderOptions& options)
-    : options_(options), thread_pool_(options.num_background_threads()) { // param: num_background_threads
-  CHECK(options.use_trajectory_builder_2d() ^
-        options.use_trajectory_builder_3d());
+    : options_(options), thread_pool_(options.num_background_threads()) {
+  // param: num_background_threads
+  // 必须一个true 一个false
+  CHECK(options.use_trajectory_builder_2d() ^ options.use_trajectory_builder_3d());
 
   // 2d位姿图(后端)的初始化
   if (options.use_trajectory_builder_2d()) {
@@ -99,7 +101,7 @@ MapBuilder::MapBuilder(const proto::MapBuilderOptions& options)
         absl::make_unique<optimization::OptimizationProblem3D>(
             options_.pose_graph_options().optimization_problem_options()),
         &thread_pool_);
-  } 
+  }
 
   // 在 cartographer/configuration_files/map_builder.lua 中设置
   // param: MAP_BUILDER.collate_by_trajectory 默认为false
@@ -113,7 +115,7 @@ MapBuilder::MapBuilder(const proto::MapBuilderOptions& options)
 
 /**
  * @brief 创建一个新的 TrajectoryBuilder 并返回它的 trajectory_id
- * 
+ *
  * @param[in] expected_sensor_ids 所有需要的topic的名字的集合
  * @param[in] trajectory_options 轨迹的参数配置
  * @param[in] local_slam_result_callback 需要传入的回调函数
@@ -150,7 +152,7 @@ int MapBuilder::AddTrajectoryBuilder(const std::set<SensorId>& expected_sensor_i
     * CreateGlobalTrajectoryBuilder2D函数定义在/mapping/internal/global_trajectory_builder.h中。
     */
 
-  // LocalTrajectoryBuilder 就是前端, 不带 Loop Closure 
+  // LocalTrajectoryBuilder 就是前端, 不带 Loop Closure
   // 包含了 Pose Extrapolator, Scan Matching, 生成submap 等
 
   // 3d的轨迹
@@ -163,12 +165,12 @@ int MapBuilder::AddTrajectoryBuilder(const std::set<SensorId>& expected_sensor_i
       local_trajectory_builder = absl::make_unique<LocalTrajectoryBuilder3D>(
           trajectory_options.trajectory_builder_3d_options(),
           SelectRangeSensorIds(expected_sensor_ids));
-    } 
+    }
 
     /**
      * c++11: static_cast关键字（编译时类型检查）: static_cast < type-id > ( expression )
      * 该运算符把expression转换为type-id类型, 但没有运行时类型检查来保证转换的安全性
-      （1）用于基本数据类型之间的转换, 如把int转换为char, 把int转换成enum, 
+      （1）用于基本数据类型之间的转换, 如把int转换为char, 把int转换成enum,
       （2）把空指针转换成目标类型的空指针
       （3）把任何类型的表达式类型转换成void类型
       （4）用于类层次结构中父类和子类之间指针和引用的转换.
@@ -193,7 +195,7 @@ int MapBuilder::AddTrajectoryBuilder(const std::set<SensorId>& expected_sensor_i
             std::move(local_trajectory_builder), trajectory_id,
             static_cast<PoseGraph3D*>(pose_graph_.get()),
             local_slam_result_callback, pose_graph_odometry_motion_filter)));
-  } 
+  }
   // 2d的轨迹
   else {
       // LocalTrajectoryBuilder2D这个类没有继承TrajectoryBuilder，只是一个工具类
@@ -229,7 +231,7 @@ int MapBuilder::AddTrajectoryBuilder(const std::set<SensorId>& expected_sensor_i
   // 如果给了初始位姿
   if (trajectory_options.has_initial_trajectory_pose()) {
     const auto& initial_trajectory_pose = trajectory_options.initial_trajectory_pose();
-    
+
     // 在位姿图中设置初始位姿
     pose_graph_->SetInitialTrajectoryPose(
         trajectory_id, initial_trajectory_pose.to_trajectory_id(),
@@ -244,7 +246,7 @@ int MapBuilder::AddTrajectoryBuilder(const std::set<SensorId>& expected_sensor_i
   }
   *options_with_sensor_ids_proto.mutable_trajectory_builder_options() = trajectory_options;
   all_trajectory_builder_options_.push_back(options_with_sensor_ids_proto);
-  
+
   CHECK_EQ(trajectory_builders_.size(), all_trajectory_builder_options_.size());
   return trajectory_id;
 }
@@ -254,7 +256,6 @@ int MapBuilder::AddTrajectoryForDeserialization(const proto::TrajectoryBuilderOp
   const int trajectory_id = trajectory_builders_.size();
 
   // c++11: vector::emplace_back() 在原地构造, 直接传入vector, 不调用移动构造函数
-
   trajectory_builders_.emplace_back(); // TODO 为什么这里emplace_back了个空空的内容
   all_trajectory_builder_options_.push_back(options_with_sensor_ids_proto);
   CHECK_EQ(trajectory_builders_.size(), all_trajectory_builder_options_.size());
@@ -280,7 +281,7 @@ std::string MapBuilder::SubmapToProto(const SubmapId& submap_id, proto::SubmapQu
            std::to_string(num_trajectory_builders()) + " trajectories.";
   }
 
-  // 获取地图数据
+// 获取地图数据
 // pose_graph_中应该是维护着一张submap的列表。通过pose_graph_获取指定id的子图
   const auto submap_data = pose_graph_->GetSubmapData(submap_id);
   if (submap_data.submap == nullptr) {
@@ -300,6 +301,7 @@ void MapBuilder::SerializeState(bool include_unfinished_submaps, io::ProtoStream
 }
 
 // 将数据进行压缩,并保存到文件中
+// map_builder_bridge调用，更上层在Node中调用
 bool MapBuilder::SerializeStateToFile(bool include_unfinished_submaps, const std::string& filename) {
   io::ProtoStreamWriter writer(filename);
   io::WritePbStream(*pose_graph_, all_trajectory_builder_options_, &writer, include_unfinished_submaps);
@@ -487,7 +489,7 @@ std::map<int, int> MapBuilder::LoadState(io::ProtoStreamReaderInterface* const r
           SubmapId{constraint_proto.submap_id().trajectory_id(),
                    constraint_proto.submap_id().submap_index()});
     }
-  } 
+  }
   else {
     // When loading unfrozen trajectories, 'AddSerializedConstraints' will
     // take care of adding information about which nodes belong to which

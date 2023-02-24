@@ -148,19 +148,15 @@ Node::Node(
   // Step: 1 声明需要发布的topic
 
   // 发布SubmapList
-  submap_list_publisher_ = node_handle_.advertise<::cartographer_ros_msgs::SubmapList>(
-          kSubmapListTopic, kLatestOnlyPublisherQueueSize);
+  submap_list_publisher_ = node_handle_.advertise<::cartographer_ros_msgs::SubmapList>(kSubmapListTopic, kLatestOnlyPublisherQueueSize);
   // 发布轨迹
-  trajectory_node_list_publisher_ = node_handle_.advertise<::visualization_msgs::MarkerArray>(
-          kTrajectoryNodeListTopic, kLatestOnlyPublisherQueueSize);
+  trajectory_node_list_publisher_ = node_handle_.advertise<::visualization_msgs::MarkerArray>(kTrajectoryNodeListTopic, kLatestOnlyPublisherQueueSize);
   // 发布landmark_pose
   landmark_poses_list_publisher_ =
-      node_handle_.advertise<::visualization_msgs::MarkerArray>(
-          kLandmarkPosesListTopic, kLatestOnlyPublisherQueueSize);
+      node_handle_.advertise<::visualization_msgs::MarkerArray>(kLandmarkPosesListTopic, kLatestOnlyPublisherQueueSize);
   // 发布约束
   constraint_list_publisher_ =
-      node_handle_.advertise<::visualization_msgs::MarkerArray>(
-          kConstraintListTopic, kLatestOnlyPublisherQueueSize);
+      node_handle_.advertise<::visualization_msgs::MarkerArray>(kConstraintListTopic, kLatestOnlyPublisherQueueSize);
   // 发布tracked_pose, 默认不发布
   if (node_options_.publish_tracked_pose) {
     tracked_pose_publisher_ =
@@ -294,10 +290,8 @@ void Node::AddExtrapolator(const int trajectory_id,
   // imu_gravity_time_constant在2d, 3d中都是10
   const double gravity_time_constant =
       node_options_.map_builder_options.use_trajectory_builder_3d()
-          ? options.trajectory_builder_options.trajectory_builder_3d_options()
-                .imu_gravity_time_constant()
-          : options.trajectory_builder_options.trajectory_builder_2d_options()
-                .imu_gravity_time_constant();
+          ? options.trajectory_builder_options.trajectory_builder_3d_options().imu_gravity_time_constant()
+          : options.trajectory_builder_options.trajectory_builder_2d_options().imu_gravity_time_constant();
 
   // c++11: map::emplace() 用于通过在容器中插入新元素来扩展map容器
   // 元素是直接构建的（既不复制也不移动）.仅当键不存在时才进行插入
@@ -415,7 +409,7 @@ void Node::PublishLocalTrajectoryData(const ::ros::TimerEvent& timer_event) {
         return carto::transform::Embed3D(carto::transform::Project2D(tracking_to_local_3d));
       }
       return tracking_to_local_3d;
-    }();
+    }(); // 加了()，此lambda表达式立刻执行
 
     // 求得当前位姿在map下的坐标
     const Rigid3d tracking_to_map = trajectory_data.local_to_map * tracking_to_local;
@@ -432,6 +426,7 @@ void Node::PublishLocalTrajectoryData(const ::ros::TimerEvent& timer_event) {
           stamped_transform.header.frame_id = node_options_.map_frame;
           stamped_transform.child_frame_id = trajectory_data.trajectory_options.odom_frame;
           // !!! 将local坐标系作为odom坐标系
+          // TODO 没有别的里程计可用，因此将前端激光里程计作为一个里程计使用
           stamped_transform.transform = ToGeometryMsgTransform(trajectory_data.local_to_map);
           stamped_transforms.push_back(stamped_transform);
 
@@ -462,6 +457,7 @@ void Node::PublishLocalTrajectoryData(const ::ros::TimerEvent& timer_event) {
         pose_msg.header.frame_id = node_options_.map_frame;
         pose_msg.header.stamp = stamped_transform.header.stamp;
         pose_msg.pose = ToGeometryMsgPose(tracking_to_map);
+        // tracked_pose话题
         tracked_pose_publisher_.publish(pose_msg);
       }
     }
@@ -474,8 +470,8 @@ void Node::PublishTrajectoryNodeList(
   // 只有存在订阅者的时候才发布轨迹
   if (trajectory_node_list_publisher_.getNumSubscribers() > 0) {
     absl::MutexLock lock(&mutex_);
-    trajectory_node_list_publisher_.publish(
-        map_builder_bridge_.GetTrajectoryNodeList());
+    // trajectory_node_list话题
+    trajectory_node_list_publisher_.publish(map_builder_bridge_.GetTrajectoryNodeList());
   }
 }
 
@@ -528,16 +524,16 @@ std::set<cartographer::mapping::TrajectoryBuilderInterface::SensorId> Node::Comp
 
   // 如果只有一个传感器, 那订阅的topic就是topic
   // 如果是多个传感器, 那订阅的topic就是topic_1,topic_2, 依次类推
-  for (const std::string& topic :
-       ComputeRepeatedTopicNames(kLaserScanTopic, options.num_laser_scans)) {
+  // kLaserScanTopic == "scan"
+  for (const std::string& topic : ComputeRepeatedTopicNames(kLaserScanTopic, options.num_laser_scans)) {
     expected_topics.insert(SensorId{SensorType::RANGE, topic});
   }
-  for (const std::string& topic : ComputeRepeatedTopicNames(
-           kMultiEchoLaserScanTopic, options.num_multi_echo_laser_scans)) {
+  // kMultiEchoLaserScanTopic == "echoes"
+  for (const std::string& topic : ComputeRepeatedTopicNames(kMultiEchoLaserScanTopic, options.num_multi_echo_laser_scans)) {
     expected_topics.insert(SensorId{SensorType::RANGE, topic});
   }
-  for (const std::string& topic :
-       ComputeRepeatedTopicNames(kPointCloud2Topic, options.num_point_clouds)) {
+  // kPointCloud2Topic == "points2"
+  for (const std::string& topic : ComputeRepeatedTopicNames(kPointCloud2Topic, options.num_point_clouds)) {
     expected_topics.insert(SensorId{SensorType::RANGE, topic});
   }
   // For 2D SLAM, subscribe to the IMU if we expect it. For 3D SLAM, the IMU is
@@ -545,8 +541,7 @@ std::set<cartographer::mapping::TrajectoryBuilderInterface::SensorId> Node::Comp
   // 3d slam必须有imu, 2d可有可无, imu的topic的个数只能有一个
   if (node_options_.map_builder_options.use_trajectory_builder_3d() ||
       (node_options_.map_builder_options.use_trajectory_builder_2d() &&
-       options.trajectory_builder_options.trajectory_builder_2d_options()
-           .use_imu_data())) {
+       options.trajectory_builder_options.trajectory_builder_2d_options().use_imu_data())) {
     expected_topics.insert(SensorId{SensorType::IMU, kImuTopic});
   }
   // Odometry is optional.
@@ -557,8 +552,7 @@ std::set<cartographer::mapping::TrajectoryBuilderInterface::SensorId> Node::Comp
   // NavSatFix is optional.
   // gps可有可无, topic的个数只能有一个
   if (options.use_nav_sat) {
-    expected_topics.insert(
-        SensorId{SensorType::FIXED_FRAME_POSE, kNavSatFixTopic});
+    expected_topics.insert(SensorId{SensorType::FIXED_FRAME_POSE, kNavSatFixTopic});
   }
   // Landmark is optional.
   // Landmark可有可无, topic的个数只能有一个
@@ -614,8 +608,10 @@ int Node::AddTrajectory(const TrajectoryOptions& options) {
 void Node::LaunchSubscribers(const TrajectoryOptions& options,
                              const int trajectory_id) {
   // laser_scan 的订阅与注册回调函数, 多个laser_scan 的topic 共用同一个回调函数
-  for (const std::string& topic :
-       ComputeRepeatedTopicNames(kLaserScanTopic, options.num_laser_scans)) {
+  LOG(INFO) << "test --> LaunchSubscribers";
+  for (const std::string& topic : ComputeRepeatedTopicNames(kLaserScanTopic, options.num_laser_scans)) {
+    // 
+    LOG(INFO) << "test --> current laser scan topic: " << topic;
     subscribers_[trajectory_id].push_back(
         {SubscribeWithHandler<sensor_msgs::LaserScan>(
              &Node::HandleLaserScanMessage, trajectory_id, topic, &node_handle_,
@@ -624,8 +620,8 @@ void Node::LaunchSubscribers(const TrajectoryOptions& options,
   }
 
   // multi_echo_laser_scans的订阅与注册回调函数
-  for (const std::string& topic : ComputeRepeatedTopicNames(
-           kMultiEchoLaserScanTopic, options.num_multi_echo_laser_scans)) {
+  for (const std::string& topic : ComputeRepeatedTopicNames(kMultiEchoLaserScanTopic, options.num_multi_echo_laser_scans)) {
+    LOG(INFO) << "test --> current multi echo laser scan topic: " << topic;
     subscribers_[trajectory_id].push_back(
         {SubscribeWithHandler<sensor_msgs::MultiEchoLaserScan>(
              &Node::HandleMultiEchoLaserScanMessage, trajectory_id, topic,
@@ -634,8 +630,8 @@ void Node::LaunchSubscribers(const TrajectoryOptions& options,
   }
 
   // point_clouds 的订阅与注册回调函数
-  for (const std::string& topic :
-       ComputeRepeatedTopicNames(kPointCloud2Topic, options.num_point_clouds)) {
+  for (const std::string& topic : ComputeRepeatedTopicNames(kPointCloud2Topic, options.num_point_clouds)) {
+    LOG(INFO) << "test --> current point cloud topic: " << topic;
     subscribers_[trajectory_id].push_back(
         {SubscribeWithHandler<sensor_msgs::PointCloud2>(
              &Node::HandlePointCloud2Message, trajectory_id, topic,
@@ -691,12 +687,10 @@ void Node::LaunchSubscribers(const TrajectoryOptions& options,
 // 检查TrajectoryOptions是否存在2d或者3d轨迹的配置信息
 bool Node::ValidateTrajectoryOptions(const TrajectoryOptions& options) {
   if (node_options_.map_builder_options.use_trajectory_builder_2d()) {
-    return options.trajectory_builder_options
-        .has_trajectory_builder_2d_options();
+    return options.trajectory_builder_options.has_trajectory_builder_2d_options();
   }
   if (node_options_.map_builder_options.use_trajectory_builder_3d()) {
-    return options.trajectory_builder_options
-        .has_trajectory_builder_3d_options();
+    return options.trajectory_builder_options.has_trajectory_builder_3d_options();
   }
   return false;
 }
@@ -729,15 +723,13 @@ cartographer_ros_msgs::StatusResponse Node::TrajectoryStateToStatus(
   const auto it = trajectory_states.find(trajectory_id);
   // 如果没有找到对应id的轨迹, 返回NOT_FOUND
   if (it == trajectory_states.end()) {
-    status_response.message =
-        absl::StrCat("Trajectory ", trajectory_id, " doesn't exist.");
+    status_response.message = absl::StrCat("Trajectory ", trajectory_id, " doesn't exist.");
     status_response.code = cartographer_ros_msgs::StatusCode::NOT_FOUND;
     return status_response;
   }
 
   status_response.message =
-      absl::StrCat("Trajectory ", trajectory_id, " is in '",
-                   TrajectoryStateToString(it->second), "' state.");
+      absl::StrCat("Trajectory ", trajectory_id, " is in '", TrajectoryStateToString(it->second), "' state.");
   // 轨迹的状态如果在列表中, 返回OK, 否则返回 INVALID_ARGUMENT
   status_response.code =
       valid_states.count(it->second)
@@ -788,8 +780,7 @@ cartographer_ros_msgs::StatusResponse Node::FinishTrajectoryUnderLock(const int 
   map_builder_bridge_.FinishTrajectory(trajectory_id);
   // 将这个轨迹id放进正在结束的轨迹集合中
   trajectories_scheduled_for_finish_.emplace(trajectory_id);
-  status_response.message =
-      absl::StrCat("Finished trajectory ", trajectory_id, ".");
+  status_response.message = absl::StrCat("Finished trajectory ", trajectory_id, ".");
   status_response.code = cartographer_ros_msgs::StatusCode::OK;
   return status_response;
 }
@@ -814,11 +805,9 @@ bool Node::HandleStartTrajectory(
   if (request.use_initial_pose) {
     const auto pose = ToRigid3d(request.initial_pose);
     if (!pose.IsValid()) {
-      response.status.message =
-          "Invalid pose argument. Orientation quaternion must be normalized.";
+      response.status.message = "Invalid pose argument. Orientation quaternion must be normalized.";
       LOG(ERROR) << response.status.message;
-      response.status.code =
-          cartographer_ros_msgs::StatusCode::INVALID_ARGUMENT;
+      response.status.code = cartographer_ros_msgs::StatusCode::INVALID_ARGUMENT;
       return true;
     }
 
@@ -829,24 +818,19 @@ bool Node::HandleStartTrajectory(
         {TrajectoryState::ACTIVE, TrajectoryState::FROZEN,
          TrajectoryState::FINISHED} /* valid states */);
     if (response.status.code != cartographer_ros_msgs::StatusCode::OK) {
-      LOG(ERROR) << "Can't start a trajectory with initial pose: "
-                 << response.status.message;
+      LOG(ERROR) << "Can't start a trajectory with initial pose: " << response.status.message;
       return true;
     }
 
-    ::cartographer::mapping::proto::InitialTrajectoryPose
-        initial_trajectory_pose;
-    initial_trajectory_pose.set_to_trajectory_id(
-        request.relative_to_trajectory_id);
+    ::cartographer::mapping::proto::InitialTrajectoryPose initial_trajectory_pose;
+    initial_trajectory_pose.set_to_trajectory_id(request.relative_to_trajectory_id);
     // 将pose转成proto格式,放进initial_trajectory_pose
-    *initial_trajectory_pose.mutable_relative_pose() =
-        cartographer::transform::ToProto(pose);
+    *initial_trajectory_pose.mutable_relative_pose() = cartographer::transform::ToProto(pose);
     initial_trajectory_pose.set_timestamp(cartographer::common::ToUniversal(
         ::cartographer_ros::FromRos(ros::Time(0))));
 
     // 将初始位姿信息加入到trajectory_options中
-    *trajectory_options.trajectory_builder_options
-         .mutable_initial_trajectory_pose() = initial_trajectory_pose;
+    *trajectory_options.trajectory_builder_options.mutable_initial_trajectory_pose() = initial_trajectory_pose;
   }
 
   // 检查TrajectoryOptions是否存在2d或者3d轨迹的配置信息

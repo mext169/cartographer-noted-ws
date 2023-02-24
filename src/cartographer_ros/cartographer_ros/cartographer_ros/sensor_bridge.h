@@ -87,7 +87,7 @@ class SensorBridge {
   const int num_subdivisions_per_laser_scan_;
   std::map<std::string, cartographer::common::Time> sensor_to_previous_subdivision_time_;
   const TfBridge tf_bridge_;
-  ::cartographer::mapping::TrajectoryBuilderInterface* const trajectory_builder_;
+  ::cartographer::mapping::TrajectoryBuilderInterface* const trajectory_builder_; // 指向CollatedTrajectoryBuilder
 
   absl::optional<::cartographer::transform::Rigid3d> ecef_to_local_frame_;
 };

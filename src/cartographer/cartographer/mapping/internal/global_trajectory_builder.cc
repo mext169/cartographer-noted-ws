@@ -70,11 +70,8 @@ class GlobalTrajectoryBuilder : public mapping::TrajectoryBuilderInterface {
    * @param[in] sensor_id topic名字
    * @param[in] timed_point_cloud_data 点云数据
    */
-  void AddSensorData(
-      const std::string& sensor_id,
-      const sensor::TimedPointCloudData& timed_point_cloud_data) override {
-    CHECK(local_trajectory_builder_)
-        << "Cannot add TimedPointCloudData without a LocalTrajectoryBuilder.";
+  void AddSensorData(const std::string& sensor_id, const sensor::TimedPointCloudData& timed_point_cloud_data) override {
+    CHECK(local_trajectory_builder_) << "Cannot add TimedPointCloudData without a LocalTrajectoryBuilder.";
 
     // 进行扫描匹配, 返回匹配后的结果
     std::unique_ptr<typename LocalTrajectoryBuilder::MatchingResult> matching_result = local_trajectory_builder_->AddRangeData(sensor_id, timed_point_cloud_data);
@@ -107,6 +104,7 @@ class GlobalTrajectoryBuilder : public mapping::TrajectoryBuilderInterface {
     }
 
     // 将结果数据传入回调函数中, 进行保存
+    // local_slam_result_callback_是在MapBuilderBridge中传入的lambda表达式
     if (local_slam_result_callback_) {
       local_slam_result_callback_(
           trajectory_id_, matching_result->time, matching_result->local_pose,
@@ -137,8 +135,7 @@ class GlobalTrajectoryBuilder : public mapping::TrajectoryBuilderInterface {
     // odometry could be marginalized between nodes in the pose graph.
     // Related issue: cartographer-project/cartographer/#1768
     if (pose_graph_odometry_motion_filter_.has_value() &&
-        pose_graph_odometry_motion_filter_.value().IsSimilar(
-            odometry_data.time, odometry_data.pose)) {
+        pose_graph_odometry_motion_filter_.value().IsSimilar(odometry_data.time, odometry_data.pose)) {
       return;
     }
     pose_graph_->AddOdometryData(trajectory_id_, odometry_data);
@@ -149,15 +146,13 @@ class GlobalTrajectoryBuilder : public mapping::TrajectoryBuilderInterface {
       const std::string& sensor_id,
       const sensor::FixedFramePoseData& fixed_frame_pose) override {
     if (fixed_frame_pose.pose.has_value()) {
-      CHECK(fixed_frame_pose.pose.value().IsValid())
-          << fixed_frame_pose.pose.value();
+      CHECK(fixed_frame_pose.pose.value().IsValid()) << fixed_frame_pose.pose.value();
     }
     pose_graph_->AddFixedFramePoseData(trajectory_id_, fixed_frame_pose);
   }
 
   // Landmark的数据只在后端中使用
-  void AddSensorData(const std::string& sensor_id,
-                     const sensor::LandmarkData& landmark_data) override {
+  void AddSensorData(const std::string& sensor_id, const sensor::LandmarkData& landmark_data) override {
     pose_graph_->AddLandmarkData(trajectory_id_, landmark_data);
   }
 
@@ -185,8 +180,7 @@ class GlobalTrajectoryBuilder : public mapping::TrajectoryBuilderInterface {
 std::unique_ptr<TrajectoryBuilderInterface> CreateGlobalTrajectoryBuilder2D(
     std::unique_ptr<LocalTrajectoryBuilder2D> local_trajectory_builder,
     const int trajectory_id, mapping::PoseGraph2D* const pose_graph,
-    const TrajectoryBuilderInterface::LocalSlamResultCallback&
-        local_slam_result_callback,
+    const TrajectoryBuilderInterface::LocalSlamResultCallback& local_slam_result_callback,
     const absl::optional<MotionFilter>& pose_graph_odometry_motion_filter) {
   return absl::make_unique<
       GlobalTrajectoryBuilder<LocalTrajectoryBuilder2D, mapping::PoseGraph2D>>(
@@ -198,8 +192,7 @@ std::unique_ptr<TrajectoryBuilderInterface> CreateGlobalTrajectoryBuilder2D(
 std::unique_ptr<TrajectoryBuilderInterface> CreateGlobalTrajectoryBuilder3D(
     std::unique_ptr<LocalTrajectoryBuilder3D> local_trajectory_builder,
     const int trajectory_id, mapping::PoseGraph3D* const pose_graph,
-    const TrajectoryBuilderInterface::LocalSlamResultCallback&
-        local_slam_result_callback,
+    const TrajectoryBuilderInterface::LocalSlamResultCallback& local_slam_result_callback,
     const absl::optional<MotionFilter>& pose_graph_odometry_motion_filter) {
   return absl::make_unique<
       GlobalTrajectoryBuilder<LocalTrajectoryBuilder3D, mapping::PoseGraph3D>>(

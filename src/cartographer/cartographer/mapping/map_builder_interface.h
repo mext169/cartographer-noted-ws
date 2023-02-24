@@ -48,6 +48,8 @@ class MapBuilderInterface {
   using SensorId = TrajectoryBuilderInterface::SensorId;
 
   MapBuilderInterface() {}
+  // https://www.cnblogs.com/demian/p/6538210.html
+  // 如果一个类会被作为基类 那么基类的析构函数最好声明为虚函数
   virtual ~MapBuilderInterface() {}
 
   MapBuilderInterface(const MapBuilderInterface&) = delete;

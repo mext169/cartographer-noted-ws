@@ -280,15 +280,10 @@ MapBuilderBridge::GetLocalTrajectoryData() {
     // 填充LocalTrajectoryData
     local_trajectory_data[trajectory_id] = {
         local_slam_data,
-
         // local frame 到 global frame间的坐标变换
         map_builder_->pose_graph()->GetLocalToGlobalTransform(trajectory_id),
-
         // published_frame 到 tracking_frame 间的坐标变换
-        sensor_bridge.tf_bridge().LookupToTracking(
-            local_slam_data->time,
-            trajectory_options_[trajectory_id].published_frame),
-
+        sensor_bridge.tf_bridge().LookupToTracking(local_slam_data->time, trajectory_options_[trajectory_id].published_frame),
         trajectory_options_[trajectory_id]};
   } // end for
   return local_trajectory_data;
@@ -633,6 +628,8 @@ void MapBuilderBridge::OnLocalSlamResult(
                                              std::move(range_data_in_local)});
   // 保存结果数据
   absl::MutexLock lock(&mutex_);
+  // 每条轨迹只对应一个local slam的结果 来一帧替换一帧
+  // local_slam_data_只保存每条轨迹最新的local-slam结果
   local_slam_data_[trajectory_id] = std::move(local_slam_data);
 }
 

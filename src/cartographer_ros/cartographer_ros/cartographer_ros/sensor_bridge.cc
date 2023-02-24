@@ -56,7 +56,8 @@ SensorBridge::SensorBridge(
     carto::mapping::TrajectoryBuilderInterface* const trajectory_builder)
     : num_subdivisions_per_laser_scan_(num_subdivisions_per_laser_scan),
       tf_bridge_(tracking_frame, lookup_transform_timeout_sec, tf_buffer),
-      trajectory_builder_(trajectory_builder) {}
+      trajectory_builder_(trajectory_builder) // CollatedTrajectoryBuilder
+      {}
 
 // 将ros格式的里程计数据 转成tracking frame的pose, 再转成carto的里程计数据类型
 std::unique_ptr<carto::sensor::OdometryData> SensorBridge::ToOdometryData(const nav_msgs::Odometry::ConstPtr& msg) {

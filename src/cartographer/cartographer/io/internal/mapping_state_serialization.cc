@@ -228,16 +228,14 @@ void WritePbStream(
   // Header
   writer->WriteProto(CreateHeader());
   // 位姿图
-  writer->WriteProto(
-      SerializePoseGraph(pose_graph, include_unfinished_submaps));
+  writer->WriteProto(SerializePoseGraph(pose_graph, include_unfinished_submaps));
   // 参数配置
   writer->WriteProto(SerializeTrajectoryBuilderOptions(
       trajectory_builder_options,
       GetValidTrajectoryIds(pose_graph.GetTrajectoryStates())));
 
   // 所有的submap
-  SerializeSubmaps(pose_graph.GetAllSubmapData(), include_unfinished_submaps,
-                   writer);
+  SerializeSubmaps(pose_graph.GetAllSubmapData(), include_unfinished_submaps, writer);
   // 雷达数据, 前端后端的位姿, 时间戳
   SerializeTrajectoryNodes(pose_graph.GetTrajectoryNodes(), writer);
   // fixed_frame_origin_in_map
