@@ -105,7 +105,7 @@ class LocalTrajectoryBuilder2D {
   ActiveSubmaps2D active_submaps_;
 
   MotionFilter motion_filter_;
-//   实时的扫描匹配，用的相关分析法
+  // 实时的扫描匹配，用的相关分析法
   scan_matching::RealTimeCorrelativeScanMatcher2D real_time_correlative_scan_matcher_;
   scan_matching::CeresScanMatcher2D ceres_scan_matcher_;
 
@@ -118,6 +118,7 @@ class LocalTrajectoryBuilder2D {
   absl::optional<double> last_thread_cpu_time_seconds_;
   absl::optional<common::Time> last_sensor_time_;
 
+  // 进行雷达时间同步的类
   RangeDataCollator range_data_collator_;
 };
 

@@ -37,7 +37,7 @@ static auto* kScanMatcherResidualAngleMetric = metrics::Histogram::Null();
 /**
  * @brief 构造函数
  * 
- * @param[in] options 
+ * @param[in] options *_options()来自trajectory_builder_2d.lua里面的内容 
  * @param[in] expected_range_sensor_ids 所有range类型的话题
  */
 LocalTrajectoryBuilder2D::LocalTrajectoryBuilder2D(
@@ -155,7 +155,7 @@ LocalTrajectoryBuilder2D::AddRangeData(const std::string& sensor_id, const senso
   // TODO(gaschler): Check if this can strictly be 0.
   CHECK_LE(synchronized_data.ranges.back().point_time.time, 0.f);
 
-  // 计算第一个点的时间
+  // 计算第一个点的绝对时间
   const common::Time time_first_point = time + common::FromSeconds(synchronized_data.ranges.front().point_time.time);
   // 只有在extrapolator_初始化时, GetLastPoseTime()是common::Time::min()
   if (time_first_point < extrapolator_->GetLastPoseTime()) {
@@ -187,26 +187,24 @@ LocalTrajectoryBuilder2D::AddRangeData(const std::string& sensor_id, const senso
   }
 
   if (num_accumulated_ == 0) {
-    // 'accumulated_range_data_.origin' is uninitialized until the last
-    // accumulation.
+    // 'accumulated_range_data_.origin' is uninitialized until the last accumulation.
     accumulated_range_data_ = sensor::RangeData{{}, {}, {}};
   }
 
   // Drop any returns below the minimum range and convert returns beyond the
   // maximum range into misses.
-  // 对每个数据点进行处理
+  // 逐点遍历 去畸变 从tracking_frame转换到local_frame
   for (size_t i = 0; i < synchronized_data.ranges.size(); ++i) {
     // 获取在tracking frame 下点的坐标
     const sensor::TimedRangefinderPoint& hit = synchronized_data.ranges[i].point_time;
     // 将点云的origins坐标转到 local slam 坐标系下
     const Eigen::Vector3f origin_in_local = range_data_poses[i] * synchronized_data.origins.at(synchronized_data.ranges[i].origin_index);
-    
     // Step: 3 运动畸变的去除, 将相对于tracking_frame的hit坐标 转成 local坐标系下的坐标
+    // range_data_poses[i]是根据点云时间推算出来的位姿
     sensor::RangefinderPoint hit_in_local = range_data_poses[i] * sensor::ToRangefinderPoint(hit);
-    
     // 计算这个点的距离, 这里用的是去畸变之后的点的距离
     const Eigen::Vector3f delta = hit_in_local.position - origin_in_local;
-    const float range = delta.norm();
+    const float range = delta.norm(); // 激光点到车体的距离
     
     // param: min_range max_range
     if (range >= options_.min_range()) {

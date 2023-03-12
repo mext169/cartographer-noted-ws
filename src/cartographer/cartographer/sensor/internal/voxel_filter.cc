@@ -211,6 +211,7 @@ proto::AdaptiveVoxelFilterOptions CreateAdaptiveVoxelFilterOptions(common::LuaPa
 PointCloud AdaptiveVoxelFilter(const PointCloud& point_cloud, const proto::AdaptiveVoxelFilterOptions& options) {
   // param: adaptive_voxel_filter.max_range 距远离原点超过max_range的点被移除
   // 这里的最大距离是相对于local坐标系原点的
+  // 因为是变换到local坐标系原点处的点云，因此可以使用最大range限制
   return AdaptivelyVoxelFiltered(options, FilterByMaxRange(point_cloud, options.max_range()));
 }
 
