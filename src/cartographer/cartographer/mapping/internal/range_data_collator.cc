@@ -43,29 +43,30 @@ sensor::TimedPointCloudOriginData RangeDataCollator::AddRangeData(
   timed_point_cloud_data.intensities.resize(timed_point_cloud_data.ranges.size(), kDefaultIntensityValue);
 
   // TODO(gaschler): These two cases can probably be one.
-  // 如果同话题的点云, 还有没处理的, 就先处同步没处理的点云, 将当前点云保存
+  // 待处理的数据中有当前同话题的点云，就把待处理的先处理掉，然后将当前的点云保存
+  // current_end_ 一开始为上一次时间同步的结束时间，会更新成本次同步的结束时间
+  // current_start_为本次时间同步的开始时间
+  // current_start_ 和 current_end_ 保存的是一帧点云中最后一个点的绝对时间
   if (id_to_pending_data_.count(sensor_id) != 0) {
-    // current_end_为上一次时间同步的结束时间
-    // current_start_为本次时间同步的开始时间
+
     current_start_ = current_end_;
     // When we have two messages of the same sensor, move forward the older of
     // the two (do not send out current).
-    // 本次时间同步的结束时间为这帧点云数据的结束时间
+    // 本次时间同步的结束时间为这帧点云数据的结束时间（一组点云的最后一个点的绝对时间）
     current_end_ = id_to_pending_data_.at(sensor_id).time;
     auto result = CropAndMerge();
-    // 保存当前点云，前面处理了遗留的点云，这里先把当前的点云保存下来
     id_to_pending_data_.emplace(sensor_id, std::move(timed_point_cloud_data));
     return result;
   }
 
   // 先将当前点云添加到 等待时间同步的map中
   id_to_pending_data_.emplace(sensor_id, std::move(timed_point_cloud_data));
-
-  // 等到range数据的话题都到来之后再进行处理
+  // expected_sensor_ids_中所有话题都有数据了才进行同步
   if (expected_sensor_ids_.size() != id_to_pending_data_.size()) {
     return {};
   }
 
+  // 
   current_start_ = current_end_;
   // We have messages from all sensors, move forward to oldest.
   common::Time oldest_timestamp = common::Time::max();
@@ -86,17 +87,15 @@ sensor::TimedPointCloudOriginData RangeDataCollator::CropAndMerge() {
   bool warned_for_dropped_points = false;
   // 遍历所有的传感器话题
   for (auto it = id_to_pending_data_.begin(); it != id_to_pending_data_.end();) {
-    // 获取数据的引用
-    sensor::TimedPointCloudData& data = it->second; // .time为点云中最后一个点的时间
-    const sensor::TimedPointCloud& ranges = it->second.ranges; // 里面存了一堆点 .time为每一个点相对于最后用个点的时间，为负的
+    sensor::TimedPointCloudData& data = it->second; // data.time为点云中最后一个点的绝对时间
+    const sensor::TimedPointCloud& ranges = it->second.ranges; // 里面存了一堆点 ranges[i].time为每一个点相对于最后用个点的时间，为负的
     const std::vector<float>& intensities = it->second.intensities;
 
-    // 找到点云中 第一个时间戳不小于current_start_的点的索引
+    // 找到点云中 第一个时间戳大于等于current_start_的点的索引
     auto overlap_begin = ranges.begin();
     while (overlap_begin < ranges.end() && data.time + common::FromSeconds((*overlap_begin).time) < current_start_) {
       ++overlap_begin;
     }
-
     // 找到点云中 最后一个时间戳小于等于current_end_的点的索引
     auto overlap_end = overlap_begin;
     while (overlap_end < ranges.end() && data.time + common::FromSeconds((*overlap_end).time) <= current_end_) {
@@ -134,16 +133,13 @@ sensor::TimedPointCloudOriginData RangeDataCollator::CropAndMerge() {
     } // end if
 
     // Drop buffered points until overlap_end.
-    // 如果点云每个点都用了, 则可将这个数据进行删除
-    if (overlap_end == ranges.end()) {
+    if (overlap_end == ranges.end()) { // 如果点云每个点都用了, 则可将这个数据进行删除
       it = id_to_pending_data_.erase(it);
     } 
-    // 如果一个点都没用, 就先放这, 看下一个数据
-    else if (overlap_end == ranges.begin()) {
+    else if (overlap_end == ranges.begin()) { // 如果一个点都没用, 就先放这, 看下一个数据
       ++it;
     } 
-    // 用了一部分的点
-    else {
+    else { // 用了一部分的点
       const auto intensities_overlap_end = intensities.begin() + (overlap_end - ranges.begin());
       // 将用了的点删除, 这里的赋值是拷贝
       data = sensor::TimedPointCloudData{
@@ -155,6 +151,7 @@ sensor::TimedPointCloudOriginData RangeDataCollator::CropAndMerge() {
   } // end for
 
   // 对各传感器的点云 按照每个点的时间从小到大进行排序
+  // 这里按照时间排序使用的是相对最后一个点的时间 因此 前面在构造result.ranges是最后一个点的时间是按照current_end_来的
   std::sort(result.ranges.begin(), result.ranges.end(),
             [](const sensor::TimedPointCloudOriginData::RangeMeasurement& a, const sensor::TimedPointCloudOriginData::RangeMeasurement& b) {
               return a.point_time.time < b.point_time.time;
